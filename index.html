@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Illustratie TCO Calculator — Mens vs AI (hand-drawn, web, one-off)</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --card:#111218; --muted:#a9afc3; --text:#eef0f7;
+      --line:#23263a; --accent:#7aa2ff; --good:#52d273; --warn:#ffcc66; --bad:#ff6b6b;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+      background:linear-gradient(180deg,#07080c 0%, #0b0c10 35%, #090a0f 100%);
+      color:var(--text);
+    }
+    header{
+      padding:18px 20px;
+      border-bottom:1px solid var(--line);
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(10px);
+      background: rgba(11,12,16,0.75);
+    }
+    header h1{margin:0; font-size:16px; letter-spacing:.2px}
+    header p{margin:4px 0 0; color:var(--muted); font-size:12px}
+    .wrap{
+      display:grid;
+      grid-template-columns: 380px 1fr;
+      gap:14px;
+      padding:14px;
+      max-width:1200px;
+      margin:0 auto;
+    }
+    @media (max-width: 980px){
+      .wrap{grid-template-columns:1fr}
+      header{position:relative}
+    }
+    .card{
+      background:rgba(17,18,24,0.85);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .card h2{
+      margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.12em;
+      color:var(--muted);
+    }
+    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px}
+    input, select{
+      width:100%;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#0d0f17;
+      color:var(--text);
+      outline:none;
+    }
+    input:focus, select:focus{border-color:rgba(122,162,255,.7); box-shadow:0 0 0 3px rgba(122,162,255,.15)}
+    .btns{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px}
+    button{
+      border:1px solid var(--line);
+      background:#0d0f17;
+      color:var(--text);
+      padding:9px 10px;
+      border-radius:12px;
+      cursor:pointer;
+    }
+    button:hover{border-color:rgba(122,162,255,.55)}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 10px; border:1px solid var(--line); border-radius:999px;
+      background:#0d0f17;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .toggle{
+      display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 2px;
+    }
+    .toggle input{width:auto}
+    .muted{color:var(--muted)}
+    .totals{
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:10px; margin-top:10px;
+    }
+    .big{
+      padding:12px; border-radius:14px; border:1px solid var(--line);
+      background:#0d0f17;
+    }
+    .big .k{font-size:12px; color:var(--muted)}
+    .big .v{font-size:20px; margin-top:4px}
+    .big .d{font-size:12px; margin-top:3px; color:var(--muted)}
+    .delta.good{color:var(--good)}
+    .delta.bad{color:var(--bad)}
+    table{width:100%; border-collapse:separate; border-spacing:0 8px}
+    th{font-size:12px; text-align:left; color:var(--muted); font-weight:600}
+    td{
+      background:#0d0f17;
+      border:1px solid var(--line);
+      padding:10px;
+    }
+    td:first-child{border-radius:12px 0 0 12px}
+    td:last-child{border-radius:0 12px 12px 0}
+    .right{text-align:right}
+    .barwrap{
+      margin-top:12px;
+      display:grid; gap:10px;
+    }
+    .bar{
+      border:1px solid var(--line);
+      background:#0d0f17;
+      border-radius:14px;
+      padding:10px;
+    }
+    .bar .top{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px}
+    .meter{height:12px; background:#13162a; border-radius:999px; overflow:hidden; border:1px solid #1f2340}
+    .fill{height:100%; width:0%}
+    .hint{font-size:12px; color:var(--muted); margin-top:10px}
+    .small{font-size:12px}
+    .hr{height:1px; background:var(--line); margin:10px 0}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .note{
+      border-left:3px solid rgba(122,162,255,.7);
+      padding:10px 10px 10px 12px;
+      background:rgba(122,162,255,.08);
+      border-radius:12px;
+      color:var(--muted);
+      font-size:12px;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>Illustratie TCO Calculator — Mens vs AI</h1>
+  <p>Full color • hand-drawn look • web • one-off • supporting. Bereken <span class="mono">TCO</span> (direct) en <span class="mono">TCO+</span> (incl. externaliteiten).</p>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: Inputs -->
+  <section class="card">
+    <h2>Presets</h2>
+    <div class="btns">
+      <button type="button" onclick="applyPreset('low')">Laag</button>
+      <button type="button" onclick="applyPreset('typical')">Typisch</button>
+      <button type="button" onclick="applyPreset('high')">Hoog</button>
+      <button type="button" onclick="resetDefaults()">Reset</button>
+    </div>
+    <div class="hint">Tip: kies eerst een preset, fine-tune daarna alle inputs.</div>
+
+    <div class="hr"></div>
+
+    <h2>Shared inputs</h2>
+    <div class="grid2">
+      <div>
+        <label>Intern uurtarief (€ / uur)</label>
+        <input id="INTERN_UURTARIEF" type="number" step="1" value="75" />
+      </div>
+      <div>
+        <label>Stroomprijs (€ / kWh)</label>
+        <input id="ELEKTRAPRIJS" type="number" step="0.01" value="0.30" />
+      </div>
+      <div>
+        <label>Netintensiteit (gCO₂e / kWh)</label>
+        <input id="GRID_INTENSITEIT" type="number" step="1" value="250" />
+      </div>
+      <div>
+        <label>CO₂ schaduwprijs (€ / ton)</label>
+        <input id="CO2_SCHADUWPRIJS" type="number" step="1" value="130" />
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <h2>Mens — professionele illustrator</h2>
+    <div class="grid2">
+      <div>
+        <label>Fee / maakprijs (€)</label>
+        <input id="MENS_FEE" type="number" step="10" value="900" />
+      </div>
+      <div>
+        <label>Licentie (% van fee)</label>
+        <input id="MENS_LICENTIE_PCT" type="number" step="0.01" value="0.15" />
+      </div>
+      <div>
+        <label>Interne uren (briefing/review/admin)</label>
+        <input id="MENS_INTERNE_UREN" type="number" step="0.25" value="3" />
+      </div>
+      <div>
+        <label>Werkstationvermogen (kW)</label>
+        <input id="MENS_WERKSTATION_KW" type="number" step="0.01" value="0.12" />
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <h2>AI — hand-drawn look (met afwerking)</h2>
+    <div class="grid2">
+      <div>
+        <label>Toolkosten (€)</label>
+        <input id="AI_TOOLKOST" type="number" step="1" value="15" />
+      </div>
+      <div>
+        <label>Aantal generaties (incl. mislukte iteraties)</label>
+        <input id="AI_AANTAL_GENERATIES" type="number" step="1" value="150" />
+      </div>
+      <div>
+        <label>kWh per 1000 generaties</label>
+        <input id="AI_KWH_PER_1000" type="number" step="0.01" value="2.907" />
+      </div>
+      <div>
+        <label>Prompt-uren</label>
+        <input id="AI_PROMPT_UREN" type="number" step="0.25" value="2" />
+      </div>
+      <div>
+        <label>Retouch / paint-over uren</label>
+        <input id="AI_RETOUCH_UREN" type="number" step="0.25" value="3" />
+      </div>
+      <div>
+        <label>Governance uren (log/archief/exports)</label>
+        <input id="AI_GOVERNANCE_UREN" type="number" step="0.25" value="0.5" />
+      </div>
+      <div>
+        <label>Legal/brand check uren</label>
+        <input id="AI_LEGAL_UREN" type="number" step="0.25" value="0.5" />
+      </div>
+      <div>
+        <label>Fairness (% van mens-equivalent)</label>
+        <input id="FAIRNESS_PCT" type="number" step="0.01" value="0.10" />
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:10px">
+      <div>
+        <label>Fairness-basis</label>
+        <select id="FAIRNESS_BASE">
+          <option value="direct">Mens direct (fee+licentie+intern)</option>
+          <option value="fee">Alleen mens fee</option>
+        </select>
+      </div>
+      <div>
+        <label>Ethische penalty (€)</label>
+        <input id="ETHISCHE_PENALTY_EUR" type="number" step="5" value="75" />
+      </div>
+      <div>
+        <label>Artistieke penalty (€)</label>
+        <input id="ARTISTIEKE_PENALTY_EUR" type="number" step="5" value="150" />
+      </div>
+      <div>
+        <label>Extra: mens-ethiek/art penalty (€)</label>
+        <input id="MENS_EXTRA_PENALTY_EUR" type="number" step="5" value="0" />
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <h2>Risico (verwachte waarde)</h2>
+    <div class="grid2">
+      <div>
+        <label>Kans claim / takedown (0–1)</label>
+        <input id="AI_KANS_CLAIM" type="number" step="0.01" value="0.02" />
+      </div>
+      <div>
+        <label>Impact claim (€)</label>
+        <input id="AI_IMPACT_CLAIM" type="number" step="100" value="6000" />
+      </div>
+      <div>
+        <label>Kans brand mismatch (0–1)</label>
+        <input id="AI_KANS_BRAND_MISMATCH" type="number" step="0.01" value="0.10" />
+      </div>
+      <div>
+        <label>Impact brand mismatch (€)</label>
+        <input id="AI_IMPACT_BRAND_MISMATCH" type="number" step="25" value="300" />
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <h2>Wat wil je tonen?</h2>
+    <div class="toggle">
+      <span class="pill"><input id="SHOW_TCO_PLUS" type="checkbox" checked /> <label style="margin:0">Toon TCO+ (incl. externaliteiten)</label></span>
+      <span class="pill"><input id="INCLUDE_CLIMATE" type="checkbox" checked /> <label style="margin:0">Neem klimaatschade mee</label></span>
+      <span class="pill"><input id="INCLUDE_FAIRNESS" type="checkbox" checked /> <label style="margin:0">Neem fairness mee</label></span>
+      <span class="pill"><input id="INCLUDE_ETHICS" type="checkbox" checked /> <label style="margin:0">Neem ethische penalty mee</label></span>
+      <span class="pill"><input id="INCLUDE_ART" type="checkbox" checked /> <label style="margin:0">Neem artistieke penalty mee</label></span>
+    </div>
+
+    <div class="btns" style="margin-top:10px">
+      <button type="button" onclick="downloadCSV()">Download breakdown (CSV)</button>
+      <button type="button" onclick="copyShareLink()">Kopieer share-link</button>
+    </div>
+
+    <div class="note" style="margin-top:10px">
+      <div><strong>Let op:</strong> “Fairness/ethiek/artistiek” zijn bewust <em>internaliseerbare</em> posten. Zet ze op 0 als je alleen cash-out (TCO) wilt.</div>
+    </div>
+  </section>
+
+  <!-- RIGHT: Outputs -->
+  <section class="card">
+    <h2>Resultaten</h2>
+
+    <div class="totals">
+      <div class="big">
+        <div class="k" id="labelHuman">Mens — TCO+</div>
+        <div class="v" id="humanTotal">€0</div>
+        <div class="d" id="humanSub">—</div>
+      </div>
+      <div class="big">
+        <div class="k" id="labelAI">AI — TCO+</div>
+        <div class="v" id="aiTotal">€0</div>
+        <div class="d" id="aiSub">—</div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row">
+      <div class="pill"><strong>Verschil</strong> <span class="muted">(AI − Mens)</span></div>
+      <div id="delta" class="small delta">—</div>
+    </div>
+
+    <div class="barwrap">
+      <div class="bar">
+        <div class="top">
+          <div><strong>Mens</strong> <span class="muted" id="humanWhich">(TCO+)</span></div>
+          <div class="mono" id="humanBarValue">€0</div>
+        </div>
+        <div class="meter"><div class="fill" id="humanFill" style="background:rgba(122,162,255,.85)"></div></div>
+      </div>
+
+      <div class="bar">
+        <div class="top">
+          <div><strong>AI</strong> <span class="muted" id="aiWhich">(TCO+)</span></div>
+          <div class="mono" id="aiBarValue">€0</div>
+        </div>
+        <div class="meter"><div class="fill" id="aiFill" style="background:rgba(82,210,115,.85)"></div></div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <h2>Breakdown</h2>
+    <div class="muted small" style="margin-bottom:8px">
+      Categorieën volgen jouw model: fee/licentie, interne uren, risico, energie, klimaatschade, fairness, ethiek, artistiek.
+    </div>
+
+    <table id="breakdownTable">
+      <thead>
+        <tr>
+          <th>Post</th>
+          <th class="right">Mens (€)</th>
+          <th class="right">AI (€)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="hint">
+      <strong>Gebruikstip:</strong> voor “supporting” visuals werkt AI vaak goed als je (1) timeboxt op uren en (2) een duidelijke “no celebrity/no logos/no mimicry” regel hanteert.
+    </div>
+  </section>
+</div>
+
+<script>
+  // ---------- Utilities ----------
+  const $ = (id) => document.getElementById(id);
+
+  function num(id){
+    const v = parseFloat($(id).value);
+    return Number.isFinite(v) ? v : 0;
+  }
+  function bool(id){ return $(id).checked; }
+
+  function eur(x){
+    const sign = x < 0 ? "-" : "";
+    const abs = Math.abs(x);
+    return sign + "€" + abs.toLocaleString("nl-NL", {maximumFractionDigits: 0});
+  }
+  function eur2(x){
+    const sign = x < 0 ? "-" : "";
+    const abs = Math.abs(x);
+    return sign + "€" + abs.toLocaleString("nl-NL", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+
+  // ---------- Core model ----------
+  function compute(){
+    // Shared
+    const INTERN_UURTARIEF   = num("INTERN_UURTARIEF");
+    const ELEKTRAPRIJS       = num("ELEKTRAPRIJS");
+    const GRID_INTENSITEIT   = num("GRID_INTENSITEIT"); // g/kWh
+    const CO2_SCHADUWPRIJS   = num("CO2_SCHADUWPRIJS"); // €/ton
+
+    // Human
+    const MENS_FEE           = num("MENS_FEE");
+    const MENS_LICENTIE_PCT  = num("MENS_LICENTIE_PCT");
+    const MENS_INTERNE_UREN  = num("MENS_INTERNE_UREN");
+    const MENS_WERKSTATION_KW= num("MENS_WERKSTATION_KW");
+    const MENS_EXTRA_PENALTY_EUR = num("MENS_EXTRA_PENALTY_EUR");
+
+    const mens_licentie = MENS_FEE * MENS_LICENTIE_PCT;
+    const mens_intern   = MENS_INTERNE_UREN * INTERN_UURTARIEF;
+    const mens_direct   = MENS_FEE + mens_licentie + mens_intern;
+
+    const mens_kwh      = MENS_INTERNE_UREN * MENS_WERKSTATION_KW;
+    const mens_stroom   = mens_kwh * ELEKTRAPRIJS;
+
+    const mens_co2_kg   = mens_kwh * (GRID_INTENSITEIT / 1000);
+    const mens_klimaat  = (mens_co2_kg / 1000) * CO2_SCHADUWPRIJS;
+
+    const mens_tco      = mens_direct + mens_stroom;
+
+    // AI
+    const AI_TOOLKOST   = num("AI_TOOLKOST");
+    const AI_AANTAL_GENERATIES = num("AI_AANTAL_GENERATIES");
+    const AI_KWH_PER_1000 = num("AI_KWH_PER_1000");
+
+    const AI_PROMPT_UREN = num("AI_PROMPT_UREN");
+    const AI_RETOUCH_UREN = num("AI_RETOUCH_UREN");
+    const AI_GOVERNANCE_UREN = num("AI_GOVERNANCE_UREN");
+    const AI_LEGAL_UREN = num("AI_LEGAL_UREN");
+
+    const AI_KANS_CLAIM = num("AI_KANS_CLAIM");
+    const AI_IMPACT_CLAIM = num("AI_IMPACT_CLAIM");
+    const AI_KANS_BRAND_MISMATCH = num("AI_KANS_BRAND_MISMATCH");
+    const AI_IMPACT_BRAND_MISMATCH = num("AI_IMPACT_BRAND_MISMATCH");
+
+    const FAIRNESS_PCT = num("FAIRNESS_PCT");
+    const fairnessBase = $("FAIRNESS_BASE").value;
+    const ETHISCHE_PENALTY_EUR = num("ETHISCHE_PENALTY_EUR");
+    const ARTISTIEKE_PENALTY_EUR = num("ARTISTIEKE_PENALTY_EUR");
+
+    const ai_interne_uren = AI_PROMPT_UREN + AI_RETOUCH_UREN + AI_GOVERNANCE_UREN + AI_LEGAL_UREN;
+    const ai_intern       = ai_interne_uren * INTERN_UURTARIEF;
+
+    const ai_risico_claim = AI_KANS_CLAIM * AI_IMPACT_CLAIM;
+    const ai_risico_brand = AI_KANS_BRAND_MISMATCH * AI_IMPACT_BRAND_MISMATCH;
+    const ai_risico       = ai_risico_claim + ai_risico_brand;
+
+    const ai_direct       = AI_TOOLKOST + ai_intern + ai_risico;
+
+    const ai_kwh          = (AI_AANTAL_GENERATIES / 1000) * AI_KWH_PER_1000;
+    const ai_stroom       = ai_kwh * ELEKTRAPRIJS;
+
+    const ai_co2_kg       = ai_kwh * (GRID_INTENSITEIT / 1000);
+    const ai_klimaat      = (ai_co2_kg / 1000) * CO2_SCHADUWPRIJS;
+
+    const human_equiv     = (fairnessBase === "fee") ? MENS_FEE : mens_direct;
+    const ai_fairness     = FAIRNESS_PCT * human_equiv;
+
+    const ai_tco          = ai_direct + ai_stroom;
+
+    // Toggles for expanded costs
+    const showPlus        = bool("SHOW_TCO_PLUS");
+    const incClimate      = bool("INCLUDE_CLIMATE");
+    const incFairness     = bool("INCLUDE_FAIRNESS");
+    const incEthics       = bool("INCLUDE_ETHICS");
+    const incArt          = bool("INCLUDE_ART");
+
+    const mens_plus_add   = (incClimate ? mens_klimaat : 0) + (incEthics ? MENS_EXTRA_PENALTY_EUR : 0) + (incArt ? 0 : 0);
+    const ai_plus_add     = (incClimate ? ai_klimaat : 0) + (incFairness ? ai_fairness : 0) + (incEthics ? ETHISCHE_PENALTY_EUR : 0) + (incArt ? ARTISTIEKE_PENALTY_EUR : 0);
+
+    const mens_total      = showPlus ? (mens_tco + mens_plus_add) : mens_tco;
+    const ai_total        = showPlus ? (ai_tco + ai_plus_add) : ai_tco;
+
+    // Breakdown rows (always show full; but mark excluded toggles as 0)
+    const rows = [
+      {k:"Maakprijs/fee", human:MENS_FEE, ai:0},
+      {k:"Licentie", human:mens_licentie, ai:0},
+      {k:"Tooling/credits", human:0, ai:AI_TOOLKOST},
+      {k:"Interne uren", human:mens_intern, ai:ai_intern},
+      {k:"Risico (verwachte waarde)", human:0, ai:ai_risico},
+      {k:"Energie (stroom)", human:mens_stroom, ai:ai_stroom},
+      {k:"Klimaatschade (schaduwprijs)", human: incClimate ? mens_klimaat : 0, ai: incClimate ? ai_klimaat : 0},
+      {k:"Fairness (niet-vergoede rechten)", human:0, ai: incFairness ? ai_fairness : 0},
+      {k:"Ethische kosten", human: incEthics ? MENS_EXTRA_PENALTY_EUR : 0, ai: incEthics ? ETHISCHE_PENALTY_EUR : 0},
+      {k:"Artistieke kosten", human:0, ai: incArt ? ARTISTIEKE_PENALTY_EUR : 0},
+    ];
+
+    return {
+      // core
+      mens:{ direct:mens_direct, tco:mens_tco, total:mens_total, stroom:mens_stroom, klimaat:mens_klimaat, kwh:mens_kwh, co2kg:mens_co2_kg },
+      ai:{ direct:ai_direct, tco:ai_tco, total:ai_total, stroom:ai_stroom, klimaat:ai_klimaat, kwh:ai_kwh, co2kg:ai_co2_kg,
+           interneUren:ai_interne_uren, risico:ai_risico, fairness:ai_fairness },
+      flags:{ showPlus, incClimate, incFairness, incEthics, incArt },
+      rows
+    };
+  }
+
+  // ---------- Rendering ----------
+  function render(){
+    const r = compute();
+
+    const which = r.flags.showPlus ? "TCO+" : "TCO";
+    $("labelHuman").textContent = `Mens — ${which}`;
+    $("labelAI").textContent    = `AI — ${which}`;
+    $("humanWhich").textContent = `(${which})`;
+    $("aiWhich").textContent    = `(${which})`;
+
+    $("humanTotal").textContent = eur(r.mens.total);
+    $("aiTotal").textContent    = eur(r.ai.total);
+
+    const delta = r.ai.total - r.mens.total;
+    const deltaEl = $("delta");
+    deltaEl.textContent = `${eur(delta)}  (${delta < 0 ? "AI goedkoper" : "AI duurder"})`;
+    deltaEl.classList.remove("good","bad");
+    deltaEl.classList.add(delta < 0 ? "good" : "bad");
+
+    // subtotals
+    const humanSub = r.flags.showPlus
+      ? `TCO ${eur(r.mens.tco)} • +add ${eur(r.mens.total - r.mens.tco)}`
+      : `Direct+energie: ${eur(r.mens.tco)}`;
+    const aiSub = r.flags.showPlus
+      ? `TCO ${eur(r.ai.tco)} • +add ${eur(r.ai.total - r.ai.tco)}`
+      : `Direct+energie: ${eur(r.ai.tco)}`;
+
+    $("humanSub").textContent = humanSub;
+    $("aiSub").textContent = aiSub;
+
+    // bars
+    const max = Math.max(r.mens.total, r.ai.total, 1);
+    $("humanFill").style.width = `${(r.mens.total / max) * 100}%`;
+    $("aiFill").style.width    = `${(r.ai.total / max) * 100}%`;
+    $("humanBarValue").textContent = eur(r.mens.total);
+    $("aiBarValue").textContent    = eur(r.ai.total);
+
+    // breakdown table
+    const tbody = $("breakdownTable").querySelector("tbody");
+    tbody.innerHTML = "";
+    r.rows.forEach(row=>{
+      const tr = document.createElement("tr");
+      const tdK = document.createElement("td");
+      tdK.textContent = row.k;
+      const tdH = document.createElement("td");
+      tdH.className = "right mono";
+      tdH.textContent = (Math.abs(row.human) < 0.005) ? "€0" : eur2(row.human);
+      const tdA = document.createElement("td");
+      tdA.className = "right mono";
+      tdA.textContent = (Math.abs(row.ai) < 0.005) ? "€0" : eur2(row.ai);
+      tr.appendChild(tdK); tr.appendChild(tdH); tr.appendChild(tdA);
+      tbody.appendChild(tr);
+    });
+
+    // keep last render for CSV/share
+    window.__LAST_RESULT__ = r;
+  }
+
+  // ---------- Presets ----------
+  const PRESETS = {
+    low: {
+      MENS_FEE:650, MENS_LICENTIE_PCT:0.10, MENS_INTERNE_UREN:2.5,
+      AI_TOOLKOST:10, AI_AANTAL_GENERATIES:80, AI_PROMPT_UREN:1.5, AI_RETOUCH_UREN:2.5, AI_GOVERNANCE_UREN:0.5, AI_LEGAL_UREN:0.25,
+      AI_KANS_CLAIM:0.01, AI_IMPACT_CLAIM:3000, AI_KANS_BRAND_MISMATCH:0.06, AI_IMPACT_BRAND_MISMATCH:200,
+      FAIRNESS_PCT:0.05, ETHISCHE_PENALTY_EUR:0, ARTISTIEKE_PENALTY_EUR:0
+    },
+    typical: {
+      MENS_FEE:900, MENS_LICENTIE_PCT:0.15, MENS_INTERNE_UREN:3,
+      AI_TOOLKOST:15, AI_AANTAL_GENERATIES:150, AI_PROMPT_UREN:2, AI_RETOUCH_UREN:3, AI_GOVERNANCE_UREN:0.5, AI_LEGAL_UREN:0.5,
+      AI_KANS_CLAIM:0.02, AI_IMPACT_CLAIM:6000, AI_KANS_BRAND_MISMATCH:0.10, AI_IMPACT_BRAND_MISMATCH:300,
+      FAIRNESS_PCT:0.10, ETHISCHE_PENALTY_EUR:75, ARTISTIEKE_PENALTY_EUR:150
+    },
+    high: {
+      MENS_FEE:1400, MENS_LICENTIE_PCT:0.25, MENS_INTERNE_UREN:4,
+      AI_TOOLKOST:30, AI_AANTAL_GENERATIES:350, AI_PROMPT_UREN:3.5, AI_RETOUCH_UREN:6.5, AI_GOVERNANCE_UREN:0.75, AI_LEGAL_UREN:0.75,
+      AI_KANS_CLAIM:0.05, AI_IMPACT_CLAIM:10000, AI_KANS_BRAND_MISMATCH:0.18, AI_IMPACT_BRAND_MISMATCH:450,
+      FAIRNESS_PCT:0.20, ETHISCHE_PENALTY_EUR:225, ARTISTIEKE_PENALTY_EUR:400
+    }
+  };
+
+  function applyPreset(name){
+    const p = PRESETS[name];
+    if(!p) return;
+    Object.entries(p).forEach(([k,v])=>{
+      const el = $(k);
+      if(el) el.value = v;
+    });
+    render();
+  }
+
+  function resetDefaults(){
+    // Defaults = "typical" + your current shared assumptions
+    applyPreset("typical");
+    $("INTERN_UURTARIEF").value = 75;
+    $("ELEKTRAPRIJS").value = 0.30;
+    $("GRID_INTENSITEIT").value = 250;
+    $("CO2_SCHADUWPRIJS").value = 130;
+    $("MENS_WERKSTATION_KW").value = 0.12;
+    $("AI_KWH_PER_1000").value = 2.907;
+    $("FAIRNESS_BASE").value = "direct";
+    $("MENS_EXTRA_PENALTY_EUR").value = 0;
+
+    $("SHOW_TCO_PLUS").checked = true;
+    $("INCLUDE_CLIMATE").checked = true;
+    $("INCLUDE_FAIRNESS").checked = true;
+    $("INCLUDE_ETHICS").checked = true;
+    $("INCLUDE_ART").checked = true;
+
+    render();
+  }
+
+  // ---------- CSV export ----------
+  function downloadCSV(){
+    const r = window.__LAST_RESULT__ || compute();
+    const lines = [];
+    lines.push(["Post","Mens (€)","AI (€)"].join(","));
+    r.rows.forEach(row=>{
+      lines.push([csvEsc(row.k), row.human.toFixed(2), row.ai.toFixed(2)].join(","));
+    });
+    lines.push(["TOTAL ("+(r.flags.showPlus ? "TCO+" : "TCO")+")", r.mens.total.toFixed(2), r.ai.total.toFixed(2)].join(","));
+    const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "illustratie_tco_breakdown.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function csvEsc(s){
+    const t = String(s);
+    return /[",\n]/.test(t) ? `"${t.replaceAll('"','""')}"` : t;
+  }
+
+  // ---------- Share link (URL params) ----------
+  const PARAM_IDS = [
+    "INTERN_UURTARIEF","ELEKTRAPRIJS","GRID_INTENSITEIT","CO2_SCHADUWPRIJS",
+    "MENS_FEE","MENS_LICENTIE_PCT","MENS_INTERNE_UREN","MENS_WERKSTATION_KW","MENS_EXTRA_PENALTY_EUR",
+    "AI_TOOLKOST","AI_AANTAL_GENERATIES","AI_KWH_PER_1000",
+    "AI_PROMPT_UREN","AI_RETOUCH_UREN","AI_GOVERNANCE_UREN","AI_LEGAL_UREN",
+    "AI_KANS_CLAIM","AI_IMPACT_CLAIM","AI_KANS_BRAND_MISMATCH","AI_IMPACT_BRAND_MISMATCH",
+    "FAIRNESS_PCT","FAIRNESS_BASE","ETHISCHE_PENALTY_EUR","ARTISTIEKE_PENALTY_EUR",
+    "SHOW_TCO_PLUS","INCLUDE_CLIMATE","INCLUDE_FAIRNESS","INCLUDE_ETHICS","INCLUDE_ART"
+  ];
+
+  function copyShareLink(){
+    const url = new URL(window.location.href);
+    PARAM_IDS.forEach(id=>{
+      const el = $(id);
+      if(!el) return;
+      if(el.type === "checkbox") url.searchParams.set(id, el.checked ? "1" : "0");
+      else url.searchParams.set(id, el.value);
+    });
+    navigator.clipboard.writeText(url.toString()).then(()=>{
+      alert("Share-link gekopieerd!");
+    }).catch(()=>{
+      prompt("Kopieer deze link:", url.toString());
+    });
+  }
+
+  function loadFromURL(){
+    const params = new URLSearchParams(window.location.search);
+    if(params.size === 0) return;
+    PARAM_IDS.forEach(id=>{
+      if(!params.has(id)) return;
+      const el = $(id);
+      if(!el) return;
+      if(el.type === "checkbox") el.checked = params.get(id) === "1";
+      else el.value = params.get(id);
+    });
+  }
+
+  // ---------- Reactive inputs ----------
+  function bindAll(){
+    const inputs = document.querySelectorAll("input,select");
+    inputs.forEach(el=>{
+      el.addEventListener("input", render);
+      el.addEventListener("change", render);
+    });
+  }
+
+  // Init
+  bindAll();
+  loadFromURL();
+  render();
+</script>
+</body>
+</html>
